@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Play Sudoku offline with this modern PWA.">
+  <meta name="theme-color" content="#f4f6fb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Sudoku PWA Master</title>
+  
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Sudoku%20PWA%22%2C%22short_name%22%3A%22Sudoku%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%2C%22theme_color%3A%231e293b%7D">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- 1. Màn hình khởi đầu (Start Screen) -->
+    <section id="start-screen" class="screen active">
+      <div class="start-card">
+        <h1 class="game-title">SUDOKU</h1>
+        <p class="game-subtitle">Offline Modern Edition</p>
+        <div class="menu-actions">
+          <button id="btn-continue" class="btn btn-secondary hidden">Continue Game</button>
+          <button id="btn-open-new-game" class="btn btn-primary">New Game</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Màn hình chơi game (In-Game Screen) -->
+    <section id="game-screen" class="screen">
+      <header class="game-header">
+        <button id="btn-back-menu" class="btn-icon" aria-label="Menu" title="Return to Menu">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        
+        <div class="game-meta">
+          <span id="display-difficulty" class="badge">Medium</span>
+          <span class="meta-item error-counter">Error: <strong id="display-mistakes">0</strong></span>
+          <span id="display-timer" class="timer">00:00</span>
+        </div>
+
+        <button id="btn-restart" class="btn-icon btn-restart" aria-label="Restart Game" title="Restart Game">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+      </header>
+
+      <!-- Khung bàn cờ chính tích hợp Loading Overlay & Timer chờ -->
+      <main class="board-wrapper">
+        <div class="board-container">
+          <div id="sudoku-board" class="board"></div>
+
+          <!-- Lớp phủ báo trạng thái đang tạo màn chơi -->
+          <div id="board-loading-overlay" class="board-loading-overlay hidden">
+            <div class="loading-spinner"></div>
+            <p class="loading-title">Creating new game...</p>
+            <p class="loading-subtitle">Please wait a moment</p>
+            
+            <!-- Hiển thị thời gian chờ thời gian thực (phút:giây) -->
+            <div class="loading-timer-badge">
+              <span>Waiting time: </span>
+              <strong id="loading-time-elapsed">00:00</strong>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Thanh công cụ điều khiển -->
+      <footer class="game-controls">
+        <div class="action-toolbar">
+          <button id="btn-toggle-pencil" class="btn-action">
+            <span class="icon">✏️</span>
+            <span class="label">Pencil: <strong id="lbl-pencil-state">OFF</strong></span>
+          </button>
+          <button id="btn-fast-pencil" class="btn-action">
+            <span class="icon">⚡</span>
+            <span class="label">Fast Pencil</span>
+          </button>
+        </div>
+
+        <!-- Dãy nút số (Keypad) -->
+        <div id="keypad-container" class="keypad"></div>
+      </footer>
+    </section>
+
+    <!-- 3. Modal chọn độ khó -->
+    <div id="modal-difficulty" class="modal-backdrop hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Choose Difficulty</h2>
+          <button id="btn-close-modal" class="btn-close">&times;</button>
+        </div>
+        <div class="difficulty-grid">
+          <button class="btn-diff" data-diff="easy">
+            <span class="diff-name">Easy</span>
+          </button>
+          <button class="btn-diff" data-diff="medium">
+            <span class="diff-name">Medium</span>
+          </button>
+          <button class="btn-diff" data-diff="hard">
+            <span class="diff-name">Hard</span>
+          </button>
+          <button class="btn-diff" data-diff="expert">
+            <span class="diff-name">Expert</span>
+          </button>
+          <button class="btn-diff" data-diff="extreme">
+            <span class="diff-name">Extreme</span>
+          </button>
+          <button class="btn-diff diff-special" data-diff="sixteen">
+            <span class="diff-name">16×16</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Giao diện Màn hình Hoàn thành Mới (Victory Screen) -->
+    <section id="victory-screen" class="victory-screen-layer hidden">
+      <div class="victory-container">
+        <div class="victory-card">
+          <div class="victory-header">
+            <span class="trophy-icon">🏆</span>
+            <h2>CONGRATULATIONS!</h2>
+            <p class="victory-sub">You have successfully solved the Sudoku puzzle.</p>
+          </div>
+          
+          <div class="victory-stats">
+            <div class="stat-box">
+              <span class="stat-label">Time</span>
+              <span id="victory-time" class="stat-value">00:00</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Mistakes</span>
+              <span id="victory-mistakes" class="stat-value">0</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Difficulty</span>
+              <span id="victory-diff" class="stat-value">Medium</span>
+            </div>
+          </div>
+
+          <div class="share-section">
+            <h3>Share your puzzle</h3>
+            <div id="puzzle-share-preview" class="share-preview-box"></div>
+            <button id="btn-copy-puzzle" class="btn btn-secondary btn-copy">
+              <span class="copy-icon">📋</span> Copy Puzzle
+            </button>
+            <span id="toast-copy" class="toast-feedback hidden">Copied to clipboard!</span>
+          </div>
+
+          <div class="victory-actions">
+            <button id="btn-victory-home" class="btn btn-secondary">
+              <span class="icon">🏠</span> Menu
+            </button>
+            <button id="btn-victory-new-game" class="btn btn-primary">
+              <span class="icon">✨</span> New Game
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="sudoku-engine.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(() => console.log('Service Worker đã sẵn sàng cho chế độ Offline!'))
+          .catch((err) => console.error('Lỗi Service Worker:', err));
+      });
+    }
+  </script>
+</body>
+</html>

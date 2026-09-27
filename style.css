@@ -1,0 +1,809 @@
+:root {
+  /* Bảng màu Light Theme */
+  --bg-color: #f4f6fb;
+  --surface-color: #ffffff;
+  --surface-color-hover: #f1f5f9;
+  --primary-color: #2d55af;
+  --primary-active: #1d4ed8;
+  --pencil-mode-bg: #e2e8f0;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  
+  /* Đường kẻ bàn cờ và ô cờ */
+  --board-border: #334155;
+  --box-border: #334155;
+  --cell-border: #cbd5e1;
+  
+  /* Màu highlight số trùng khớp */
+  --highlight-cell: #7ca0ec;
+  --highlight-text: #1e3a8a;
+  --highlight-pencil-bg: #2d55af;
+  --highlight-pencil-text: #ffffff;
+  
+  /* Màu sắc ô cờ */
+  --clue-text: #28282d;        /* Số đề bài gốc: Màu đen than */
+  --user-text: #2d55af;        /* Ô điền ĐÚNG: Màu xanh dương đậm */
+  --error-text: #e4a3ad;       /* Ô điền SAI: Màu hồng pastel */
+  
+  --board-max-size: min(92vw, 480px);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#app-container {
+  width: 100%;
+  max-width: 540px;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen {
+  display: none;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+}
+
+.screen.active {
+  display: flex;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ================= 1. START SCREEN ================= */
+#start-screen {
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.start-card {
+  text-align: center;
+  width: 100%;
+  max-width: 360px;
+}
+
+.game-title {
+  font-size: 3.5rem;
+  letter-spacing: 0.35rem;
+  font-weight: 900;
+  color: var(--primary-color);
+  margin-bottom: 8px;
+}
+
+.game-subtitle {
+  color: var(--text-muted);
+  margin-bottom: 40px;
+  font-size: 1rem;
+}
+
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.btn {
+  padding: 16px 20px;
+  border-radius: 14px;
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease, filter 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: var(--primary-color);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* ================= 2. GAME SCREEN HEADER ================= */
+.game-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.btn-icon:hover {
+  background: #f1f5f9;
+}
+
+.game-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.badge {
+  background: #eff6ff;
+  color: var(--primary-color);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.meta-item.error-counter {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.meta-item.error-counter strong {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.timer {
+  font-family: monospace;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+/* ================= 3. BOARD & CELLS ================= */
+.board-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+}
+
+.board {
+  display: grid;
+  width: var(--board-max-size);
+  height: var(--board-max-size);
+  background: #ffffff;
+  border: 3px solid var(--board-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.55rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 0.5px solid var(--cell-border);
+  background-color: #ffffff;
+  transition: background-color 0.12s ease;
+}
+
+/* Kẻ lưới 9x9 */
+.board[data-size="9"] {
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+}
+.board[data-size="9"] .cell:nth-child(3n) { border-right: 2px solid var(--box-border); }
+.board[data-size="9"] .cell:nth-child(9n) { border-right: none; }
+.board[data-size="9"] .cell:nth-child(n+19):nth-child(-n+27),
+.board[data-size="9"] .cell:nth-child(n+46):nth-child(-n+54) {
+  border-bottom: 2px solid var(--box-border);
+}
+
+/* Kẻ lưới 16x16 */
+.board[data-size="16"] {
+  width: min(96vw, 500px);
+  height: min(96vw, 500px);
+  grid-template-columns: repeat(16, 1fr);
+  grid-template-rows: repeat(16, 1fr);
+}
+.board[data-size="16"] .cell {
+  font-size: 0.95rem;
+  overflow: hidden;
+  padding: 0;
+}
+.board[data-size="16"] .cell:nth-child(4n) { border-right: 2px solid var(--box-border); }
+.board[data-size="16"] .cell:nth-child(16n) { border-right: none; }
+.board[data-size="16"] .cell:nth-child(n+49):nth-child(-n+64),
+.board[data-size="16"] .cell:nth-child(n+113):nth-child(-n+128),
+.board[data-size="16"] .cell:nth-child(n+177):nth-child(-n+192) {
+  border-bottom: 2px solid var(--box-border);
+}
+
+/* 1. Ô đề bài gốc */
+.cell.clue {
+  color: var(--clue-text);
+  background-color: #ffffff;
+  font-weight: 700;
+}
+
+/* 2. Ô người chơi điền ĐÚNG */
+.cell.user-filled {
+  color: var(--user-text);
+  background-color: #ffffff;
+  font-weight: 600;
+}
+
+/* 3. Ô người chơi điền SAI: LUÔN HIỂN THỊ CHỮ MÀU HỒNG PASTEL TRÊN NỀN TRẮNG */
+.cell.cell-error,
+.cell.cell-error .cell-value {
+  background-color: #ffffff !important;
+  color: var(--error-text) !important;
+  box-shadow: none !important;
+  visibility: visible !important;
+}
+
+.cell.cell-error {
+  animation: shake 0.25s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* 4. Highlight số trùng khớp: Nền xanh lam nhạt */
+.cell.highlight-val {
+  background-color: var(--highlight-cell) !important;
+  color: var(--highlight-text);
+}
+
+/* Ô điền sai không bị đổi nền xanh khi highlight, luôn giữ nền trắng và chữ hồng */
+.cell.cell-error.highlight-val,
+.cell.cell-error.highlight-val .cell-value {
+  background-color: #ffffff !important;
+  color: var(--error-text) !important;
+}
+
+/* ================= 4. PENCIL MARKS ================= */
+.pencil-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  padding: 1px;
+  pointer-events: none;
+}
+
+.board[data-size="9"] .pencil-grid {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+}
+
+.board[data-size="16"] .pencil-grid {
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  padding: 0;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.pencil-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  visibility: hidden;
+  line-height: 1;
+}
+
+.board[data-size="16"] .pencil-slot {
+  font-size: 7px;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  transform: scale(0.78);
+  transform-origin: center center;
+}
+
+.pencil-slot.visible {
+  visibility: visible;
+}
+
+.pencil-slot.highlighted {
+  background-color: var(--highlight-pencil-bg) !important;
+  color: var(--highlight-pencil-text) !important;
+  font-weight: 900;
+  border-radius: 2px;
+}
+
+.board[data-size="16"] .pencil-slot.highlighted {
+  border-radius: 1px;
+  transform: scale(0.85);
+}
+
+/* ================= 5. CONTROLS ================= */
+.game-controls {
+  padding: 8px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg-color);
+}
+
+.action-toolbar {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-action {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ffffff;
+  color: var(--text-main);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 11px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.btn-action.active-mode {
+  background: #eff6ff;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.keypad {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.keypad[data-size="9"] {
+  grid-template-columns: repeat(9, 1fr);
+}
+
+.keypad[data-size="16"] {
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.key-btn {
+  aspect-ratio: 1 / 1;
+  background: #ffffff;
+  color: var(--primary-color);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0;
+  box-sizing: border-box;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+  transition: background 0.15s ease, opacity 0.2s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.key-btn:active {
+  transform: translateY(1px);
+}
+
+.key-sym {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary-color);
+}
+
+.key-count {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #94a3b8;
+  line-height: 1;
+  margin-top: 3px;
+}
+
+.keypad[data-size="16"] .key-btn {
+  height: 42px;
+  aspect-ratio: auto;
+  padding: 1px 0;
+}
+
+.keypad[data-size="16"] .key-sym {
+  font-size: 0.9rem;
+}
+
+.keypad[data-size="16"] .key-count {
+  font-size: 0.52rem;
+  margin-top: 1px;
+}
+
+.key-btn.active-key {
+  background: var(--primary-color) !important;
+  border-color: var(--primary-active) !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3) !important;
+}
+
+.key-btn.active-key .key-sym {
+  color: #ffffff !important;
+}
+
+.key-btn.active-key .key-count {
+  color: #dbeafe !important;
+}
+
+.key-btn:disabled,
+.key-btn.btn-completed {
+  opacity: 0.25 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  box-shadow: none !important;
+  border-color: #e2e8f0 !important;
+}
+
+.keypad.pencil-active .key-btn {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.keypad.pencil-active .key-btn .key-sym {
+  color: #64748b;
+}
+
+.keypad.pencil-active .key-btn.active-key {
+  background: #64748b !important;
+  border-color: #475569 !important;
+}
+
+.keypad.pencil-active .key-btn.active-key .key-sym {
+  color: #ffffff !important;
+}
+
+/* ================= 6. MODALS ================= */
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.modal-content {
+  background: #ffffff;
+  width: 100%;
+  max-width: 380px;
+  border-radius: 20px;
+  padding: 22px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.difficulty-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-diff {
+  display: center;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-diff:hover, .btn-diff:active {
+  background: #eff6ff;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.diff-name { font-weight: 700; }
+.diff-special .diff-name { color: var(--primary-color); }
+
+/* ================= 8. LOADING OVERLAY & DIMMED BOARD ================= */
+.board-container {
+  position: relative;
+  width: var(--board-max-size);
+  height: var(--board-max-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.board.board-dimmed {
+  opacity: 0.35;
+  filter: blur(1.5px);
+  pointer-events: none;
+}
+
+.board-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: 6px;
+  z-index: 25;
+  text-align: center;
+  padding: 20px;
+}
+
+.loading-spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid #e2e8f0;
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+  margin-bottom: 14px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.loading-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.game-controls.controls-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.btn-icon:disabled,
+.btn-icon.btn-disabled {
+  opacity: 0.25 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+.loading-timer-badge {
+  margin-top: 14px;
+  font-family: monospace;
+  font-size: 0.95rem;
+  color: var(--primary-color);
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+}
+
+.loading-timer-badge strong {
+  color: #1e40af;
+  font-weight: 700;
+  min-width: 48px;
+  text-align: center;
+}
+
+/* ================= 9. MÀN HÌNH HOÀN THÀNH (VICTORY SCREEN) ================= */
+.victory-screen-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(235, 243, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+  overflow-y: auto;
+  animation: fadeInVictory 0.3s ease-out;
+}
+
+@keyframes fadeInVictory {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.victory-container {
+  width: 100%;
+  max-width: 390px;
+}
+
+.victory-card {
+  background: #ffffff;
+  width: 100%;
+  border-radius: 24px;
+  padding: 26px 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 16px 36px -8px rgba(37, 99, 235, 0.15);
+  text-align: center;
+}
+
+.trophy-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.victory-sub {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.victory-stats {
+  display: flex;
+  justify-content: space-around;
+  margin: 18px 0;
+  background: #f8fafc;
+  padding: 14px 10px;
+  border-radius: 14px;
+  border: 1px solid #edf2f7;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.share-section {
+  margin-top: 14px;
+  text-align: left;
+}
+
+.share-section h3 {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.share-preview-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  color: #334155;
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre;
+  margin-bottom: 10px;
+}
+
+.btn-copy {
+  width: 100%;
+}
+
+.toast-feedback {
+  display: block;
+  text-align: center;
+  color: #16a34a;
+  font-size: 0.8rem;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.victory-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+}
+
+.victory-actions .btn {
+  flex: 1;
+  padding: 14px;
+  font-size: 0.95rem;
+}
+
+#modal-difficulty {
+  z-index: 100;
+}
+
+/* Animation rung khi điền nháp xung đột (tương tự rung khi điền chính thức sai) */
+.cell.cell-shake {
+  animation: shake 0.25s ease-in-out;
+}
