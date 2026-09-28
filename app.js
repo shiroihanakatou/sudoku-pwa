@@ -896,13 +896,12 @@ class SudokuController {
     syncVersionFromCache();
 
     window.addEventListener('load', () => {
-      // 2. Kênh nhận tin nhắn từ Service Worker: Cũng hiển thị NGUYÊN VẸN
+      // 2. Kênh nhận tin nhắn từ Service Worker: ĐÃ THÊM REPLACE ĐỂ CẮT TIỀN TỐ
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'VERSION_INFO') {
           const versionEl = document.getElementById('app-version');
           if (versionEl && event.data.version) {
-            // Gán toàn bộ phiên bản nhận được từ sw.js
-            versionEl.textContent = event.data.version;
+            versionEl.textContent = event.data.version.replace(/^sudoku-pwa-/, '');
           }
         }
       });
