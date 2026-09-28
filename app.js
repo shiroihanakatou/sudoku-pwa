@@ -903,7 +903,6 @@ class SudokuController {
 
         const toast = document.getElementById('update-toast');
         const btnApply = document.getElementById('btn-update-now');
-        const btnDismiss = document.getElementById('btn-update-dismiss');
 
         const promptUserForUpdate = (worker) => {
           waitingWorker = worker;
