@@ -6,10 +6,10 @@
   <meta name="description" content="Play Sudoku offline with this modern PWA.">
   <meta name="theme-color" content="#f4f6fb">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Sudoku PWA Master</title>
   
-  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Sudoku%20PWA%22%2C%22short_name%22%3A%22Sudoku%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%2C%22theme_color%3A%231e293b%7D">
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Sudoku%20PWA%22%2C%22short_name%22%3A%22Sudoku%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%231e293b%22%7D">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -46,19 +46,21 @@
 
       <!-- Khung bàn cờ chính tích hợp Loading Overlay & Timer chờ -->
       <main class="board-wrapper">
-        <div class="board-container">
-          <div id="sudoku-board" class="board"></div>
+        <div class="board-viewport">
+          <div class="board-container">
+            <div id="sudoku-board" class="board"></div>
 
-          <!-- Lớp phủ báo trạng thái đang tạo màn chơi -->
-          <div id="board-loading-overlay" class="board-loading-overlay hidden">
-            <div class="loading-spinner"></div>
-            <p class="loading-title">Creating new game...</p>
-            <p class="loading-subtitle">Please wait a moment</p>
-            
-            <!-- Hiển thị thời gian chờ thời gian thực (phút:giây) -->
-            <div class="loading-timer-badge">
-              <span>Waiting time: </span>
-              <strong id="loading-time-elapsed">00:00</strong>
+            <!-- Lớp phủ báo trạng thái đang tạo màn chơi -->
+            <div id="board-loading-overlay" class="board-loading-overlay hidden">
+              <div class="loading-spinner"></div>
+              <p class="loading-title">Creating new game...</p>
+              <p class="loading-subtitle">Please wait a moment</p>
+
+              <!-- Hiển thị thời gian chờ thời gian thực (phút:giây) -->
+              <div class="loading-timer-badge">
+                <span>Waiting time: </span>
+                <strong id="loading-time-elapsed">00:00</strong>
+              </div>
             </div>
           </div>
         </div>

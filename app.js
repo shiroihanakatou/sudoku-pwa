@@ -4,6 +4,8 @@
  */
 
 const STORAGE_KEY = 'sudoku_pwa_saved_game_state_v1';
+const MIN_BOARD_ZOOM = 1;
+const MAX_BOARD_ZOOM = 2;
 
 const triggerHaptic = (pattern) => {
   if (typeof navigator.vibrate === 'function') {
@@ -107,30 +109,46 @@ class SudokuView {
     this.cellElements = [];
 
     const fragment = document.createDocumentFragment();
+    const boxSize = size === 16 ? 4 : 3;
+    const boxCount = size / boxSize;
 
-    for (let i = 0; i < size * size; i++) {
-      const cellDiv = document.createElement('div');
-      cellDiv.className = 'cell';
-      cellDiv.dataset.index = i;
+    for (let boxRow = 0; boxRow < boxCount; boxRow++) {
+      for (let boxCol = 0; boxCol < boxCount; boxCol++) {
+        const boxDiv = document.createElement('div');
+        boxDiv.className = 'board-box';
 
-      const valSpan = document.createElement('span');
-      valSpan.className = 'cell-value';
-      cellDiv.appendChild(valSpan);
+        for (let rowOffset = 0; rowOffset < boxSize; rowOffset++) {
+          for (let colOffset = 0; colOffset < boxSize; colOffset++) {
+            const row = boxRow * boxSize + rowOffset;
+            const col = boxCol * boxSize + colOffset;
+            const index = row * size + col;
+            const cellDiv = document.createElement('div');
+            cellDiv.className = 'cell';
+            cellDiv.dataset.index = index;
 
-      const pencilGrid = document.createElement('div');
-      pencilGrid.className = 'pencil-grid';
+            const valSpan = document.createElement('span');
+            valSpan.className = 'cell-value';
+            cellDiv.appendChild(valSpan);
 
-      for (let s = 1; s <= size; s++) {
-        const slot = document.createElement('span');
-        slot.className = 'pencil-slot';
-        slot.dataset.val = s;
-        slot.textContent = symbols[s - 1];
-        pencilGrid.appendChild(slot);
+            const pencilGrid = document.createElement('div');
+            pencilGrid.className = 'pencil-grid';
+
+            for (let s = 1; s <= size; s++) {
+              const slot = document.createElement('span');
+              slot.className = 'pencil-slot';
+              slot.dataset.val = s;
+              slot.textContent = symbols[s - 1];
+              pencilGrid.appendChild(slot);
+            }
+
+            cellDiv.appendChild(pencilGrid);
+            boxDiv.appendChild(cellDiv);
+            this.cellElements[index] = cellDiv;
+          }
+        }
+
+        fragment.appendChild(boxDiv);
       }
-
-      cellDiv.appendChild(pencilGrid);
-      fragment.appendChild(cellDiv);
-      this.cellElements.push(cellDiv);
     }
 
     this.domBoard.appendChild(fragment);
@@ -291,8 +309,19 @@ class SudokuController {
     this.isGameFinished = false;
     this.loadingStartTime = 0;
     this.loadingTimerInterval = null;
+    this.boardNavigation = {
+      pointers: new Map(),
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      lastDistance: 0,
+      lastCenter: null,
+      moved: false,
+      suppressClick: false
+    };
 
     this.initEventListeners();
+    this.initBoardNavigation();
     this.checkSavedGame();
     this.setupAutoSave();
     this.registerServiceWorker();
@@ -399,6 +428,189 @@ class SudokuController {
     document.getElementById('btn-victory-new-game').addEventListener('click', () => {
       this.view.toggleDiffModal(true);
     });
+
+    window.addEventListener('resize', () => {
+      this.syncBoardViewport();
+      this.applyBoardNavigation();
+    });
+  }
+
+  initBoardNavigation() {
+    const wrapper = document.querySelector('.board-viewport');
+
+    wrapper.addEventListener('pointerdown', (event) => {
+      if (this.engine.size !== 16 || this.isGenerating) return;
+
+      this.boardNavigation.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      try {
+        wrapper.setPointerCapture(event.pointerId);
+      } catch {
+      }
+      this.boardNavigation.moved = false;
+
+      if (this.boardNavigation.pointers.size === 2) {
+        this.boardNavigation.lastDistance = this.getPointerDistance();
+        this.boardNavigation.lastCenter = this.getPointerCenter();
+      }
+    });
+
+    wrapper.addEventListener('pointermove', (event) => {
+      if (this.engine.size !== 16 || !this.boardNavigation.pointers.has(event.pointerId)) return;
+
+      this.boardNavigation.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+      if (this.boardNavigation.pointers.size === 1) {
+        const previousPointer = this.boardNavigation.lastCenter;
+        const deltaX = previousPointer ? event.clientX - previousPointer.x : 0;
+        const deltaY = previousPointer ? event.clientY - previousPointer.y : 0;
+        this.boardNavigation.panX += deltaX;
+        this.boardNavigation.panY += deltaY;
+        this.boardNavigation.lastCenter = { x: event.clientX, y: event.clientY };
+        this.boardNavigation.moved = this.boardNavigation.moved || Math.hypot(deltaX, deltaY) > 4;
+      } else if (this.boardNavigation.pointers.size === 2) {
+        const distance = this.getPointerDistance();
+        const center = this.getPointerCenter();
+        const zoomFactor = this.boardNavigation.lastDistance ? distance / this.boardNavigation.lastDistance : 1;
+        const wrapperRect = wrapper.getBoundingClientRect();
+
+        this.zoomBoard(zoomFactor, center.x - wrapperRect.left, center.y - wrapperRect.top);
+        this.boardNavigation.panX += center.x - this.boardNavigation.lastCenter.x;
+        this.boardNavigation.panY += center.y - this.boardNavigation.lastCenter.y;
+        this.boardNavigation.lastDistance = distance;
+        this.boardNavigation.lastCenter = center;
+        this.boardNavigation.moved = true;
+      }
+
+      this.clampBoardPan();
+      this.applyBoardNavigation();
+    });
+
+    const endPointer = (event) => {
+      if (!this.boardNavigation.pointers.has(event.pointerId)) return;
+
+      this.boardNavigation.pointers.delete(event.pointerId);
+      if (this.boardNavigation.moved) {
+        this.boardNavigation.suppressClick = true;
+        setTimeout(() => {
+          this.boardNavigation.suppressClick = false;
+        }, 100);
+      }
+
+      if (this.boardNavigation.pointers.size < 2) {
+        this.boardNavigation.lastDistance = 0;
+        this.boardNavigation.lastCenter = null;
+      }
+    };
+
+    wrapper.addEventListener('pointerup', endPointer);
+    wrapper.addEventListener('pointercancel', endPointer);
+    wrapper.addEventListener('wheel', (event) => {
+      if (this.engine.size !== 16 || this.isGenerating) return;
+
+      event.preventDefault();
+      const rect = wrapper.getBoundingClientRect();
+      const zoomFactor = Math.exp(-event.deltaY * 0.0015);
+      this.zoomBoard(zoomFactor, event.clientX - rect.left, event.clientY - rect.top);
+      this.applyBoardNavigation();
+    }, { passive: false });
+  }
+
+  getPointerDistance() {
+    const [first, second] = [...this.boardNavigation.pointers.values()];
+    return Math.hypot(second.x - first.x, second.y - first.y);
+  }
+
+  getPointerCenter() {
+    const points = [...this.boardNavigation.pointers.values()];
+    return {
+      x: (points[0].x + points[1].x) / 2,
+      y: (points[0].y + points[1].y) / 2
+    };
+  }
+
+  zoomBoard(factor, originX, originY) {
+    const previousZoom = this.boardNavigation.zoom;
+    const nextZoom = Math.min(MAX_BOARD_ZOOM, Math.max(MIN_BOARD_ZOOM, previousZoom * factor));
+    const actualFactor = nextZoom / previousZoom;
+
+    this.boardNavigation.panX = originX - (originX - this.boardNavigation.panX) * actualFactor;
+    this.boardNavigation.panY = originY - (originY - this.boardNavigation.panY) * actualFactor;
+    this.boardNavigation.zoom = nextZoom;
+    this.clampBoardPan();
+  }
+
+  clampBoardPan() {
+    if (this.view.domBoard.dataset.size !== '16') return;
+
+    const wrapper = document.querySelector('.board-viewport');
+    const container = this.view.domBoard.parentElement;
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const currentTransform = container.style.transform;
+    container.style.transform = 'none';
+    const baseRect = container.getBoundingClientRect();
+    container.style.transform = currentTransform;
+    const scaledWidth = container.offsetWidth * this.boardNavigation.zoom;
+    const scaledHeight = container.offsetHeight * this.boardNavigation.zoom;
+    const viewportLeft = wrapperRect.left;
+    const viewportRight = wrapperRect.right;
+    const viewportTop = wrapperRect.top;
+    const viewportBottom = wrapperRect.bottom;
+
+    if (this.boardNavigation.zoom <= MIN_BOARD_ZOOM) {
+      this.boardNavigation.panX = (viewportLeft + viewportRight) / 2 - baseRect.left - scaledWidth / 2;
+      this.boardNavigation.panY = (viewportTop + viewportBottom) / 2 - baseRect.top - scaledHeight / 2;
+      return;
+    }
+
+    const horizontalEdgeA = viewportRight - baseRect.left - scaledWidth;
+    const horizontalEdgeB = viewportLeft - baseRect.left;
+    const minPanX = Math.min(horizontalEdgeA, horizontalEdgeB);
+    const maxPanX = Math.max(horizontalEdgeA, horizontalEdgeB);
+    this.boardNavigation.panX = Math.min(maxPanX, Math.max(minPanX, this.boardNavigation.panX));
+
+    const verticalEdgeA = viewportBottom - baseRect.top - scaledHeight;
+    const verticalEdgeB = viewportTop - baseRect.top;
+    const minPanY = Math.min(verticalEdgeA, verticalEdgeB);
+    const maxPanY = Math.max(verticalEdgeA, verticalEdgeB);
+    this.boardNavigation.panY = Math.min(maxPanY, Math.max(minPanY, this.boardNavigation.panY));
+  }
+
+  applyBoardNavigation() {
+    const container = this.view.domBoard.parentElement;
+    if (this.view.domBoard.dataset.size !== '16') {
+      container.style.transform = '';
+      return;
+    }
+
+    this.clampBoardPan();
+    container.style.transform = `translate3d(${this.boardNavigation.panX}px, ${this.boardNavigation.panY}px, 0) scale(${this.boardNavigation.zoom})`;
+  }
+
+  syncBoardViewport() {
+    const viewport = document.querySelector('.board-viewport');
+    const container = this.view.domBoard.parentElement;
+    if (!viewport || this.view.domBoard.dataset.size !== '16') {
+      viewport?.style.removeProperty('width');
+      viewport?.style.removeProperty('height');
+      viewport?.style.removeProperty('flex');
+      return;
+    }
+
+    viewport.style.width = `${container.offsetWidth}px`;
+    viewport.style.height = `${container.offsetHeight}px`;
+    viewport.style.flex = '0 0 auto';
+  }
+
+  resetBoardNavigation() {
+    this.boardNavigation.pointers.clear();
+    this.boardNavigation.zoom = 1;
+    this.boardNavigation.panX = 0;
+    this.boardNavigation.panY = 0;
+    this.boardNavigation.lastDistance = 0;
+    this.boardNavigation.lastCenter = null;
+    this.boardNavigation.moved = false;
+    this.boardNavigation.suppressClick = false;
+    this.applyBoardNavigation();
   }
 
   startLoadingTimer() {
@@ -434,12 +646,15 @@ class SudokuController {
 
     const symbols = config.size === 16 ? SYMBOLS_16 : SYMBOLS_9;
     this.view.buildBlankBoardDOM(config.size, symbols);
+    this.resetBoardNavigation();
     this.view.updatePencilModeUI(false);
     this.view.clearHighlight();
 
     this.view.setLoadingState(true);
     this.startLoadingTimer();
     this.view.showScreen('game-screen');
+    this.syncBoardViewport();
+    this.resetBoardNavigation();
 
     try {
       await this.engine.generatePuzzleInWorker(config.size, config.min, config.max);
@@ -480,6 +695,7 @@ class SudokuController {
     const cell = this.engine.cells[index];
     this.view.cellElements.forEach(cellElement => cellElement.classList.remove('selected-cell'));
     this.view.cellElements[index]?.classList.add('selected-cell');
+
     if (this.engine.size === 16) {
       this.view.cellElements[index]?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
     }
@@ -638,12 +854,15 @@ class SudokuController {
 
       this.engine.deserialize(state.engine);
       this.view.buildBlankBoardDOM(this.engine.size, this.engine.symbols);
+      this.resetBoardNavigation();
       this.view.setLoadingState(false);
       this.renderBoard();
       this.view.updatePencilModeUI(false);
       this.view.clearHighlight();
 
       this.view.showScreen('game-screen');
+      this.syncBoardViewport();
+      this.resetBoardNavigation();
       this.startTimer();
       this.updateHeaderMeta();
     } catch (e) {
