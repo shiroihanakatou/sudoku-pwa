@@ -34,50 +34,54 @@ function countBits(n) {
   return count;
 }
 
-// Giải bàn cờ hoàn chỉnh bằng MRV + Bitmask Backtracking
-function solveMRV(grid, rowMask, colMask, boxMask) {
+function findBestCell(grid, rowMask, colMask, boxMask) {
   let minCandidates = 10;
   let bestR = -1, bestC = -1, bestMask = 0;
 
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
-      if (grid[r][c] === 0) {
-        const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-        const used = rowMask[r] | colMask[c] | boxMask[b];
-        const candidates = 511 & (~used);
-        const cnt = countBits(candidates);
-        if (cnt === 0) return false;
-        if (cnt < minCandidates) {
-          minCandidates = cnt;
-          bestR = r;
-          bestC = c;
-          bestMask = candidates;
-          if (cnt === 1) break;
-        }
+      if (grid[r][c] !== 0) continue;
+      const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+      const candidates = 511 & ~(rowMask[r] | colMask[c] | boxMask[b]);
+      const count = countBits(candidates);
+      if (count === 0) return null;
+      if (count < minCandidates) {
+        minCandidates = count;
+        bestR = r;
+        bestC = c;
+        bestMask = candidates;
+        if (count === 1) break;
       }
     }
     if (minCandidates === 1) break;
   }
 
-  if (bestR === -1) return true;
+  return { r: bestR, c: bestC, mask: bestMask };
+}
 
-  const b = Math.floor(bestR / 3) * 3 + Math.floor(bestC / 3);
-  let cMask = bestMask;
+// Giải bàn cờ hoàn chỉnh bằng MRV + Bitmask Backtracking
+function solveMRV(grid, rowMask, colMask, boxMask) {
+  const best = findBestCell(grid, rowMask, colMask, boxMask);
+  if (!best) return false;
+  if (best.r === -1) return true;
+
+  const b = Math.floor(best.r / 3) * 3 + Math.floor(best.c / 3);
+  let cMask = best.mask;
   while (cMask > 0) {
     const bit = cMask & (-cMask);
     cMask ^= bit;
     const num = Math.round(Math.log2(bit)) + 1;
 
-    grid[bestR][bestC] = num;
-    rowMask[bestR] |= bit;
-    colMask[bestC] |= bit;
+    grid[best.r][best.c] = num;
+    rowMask[best.r] |= bit;
+    colMask[best.c] |= bit;
     boxMask[b] |= bit;
 
     if (solveMRV(grid, rowMask, colMask, boxMask)) return true;
 
-    grid[bestR][bestC] = 0;
-    rowMask[bestR] &= ~bit;
-    colMask[bestC] &= ~bit;
+    grid[best.r][best.c] = 0;
+    rowMask[best.r] &= ~bit;
+    colMask[best.c] &= ~bit;
     boxMask[b] &= ~bit;
   }
 
@@ -86,51 +90,30 @@ function solveMRV(grid, rowMask, colMask, boxMask) {
 
 // Đếm số nghiệm với cơ chế Early Exit khi số nghiệm >= 2
 function countSolutionsMRV(grid, rowMask, colMask, boxMask, counter) {
-  let minCandidates = 10;
-  let bestR = -1, bestC = -1, bestMask = 0;
-
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      if (grid[r][c] === 0) {
-        const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-        const used = rowMask[r] | colMask[c] | boxMask[b];
-        const candidates = 511 & (~used);
-        const cnt = countBits(candidates);
-        if (cnt === 0) return counter.val;
-        if (cnt < minCandidates) {
-          minCandidates = cnt;
-          bestR = r;
-          bestC = c;
-          bestMask = candidates;
-          if (cnt === 1) break;
-        }
-      }
-    }
-    if (minCandidates === 1) break;
-  }
-
-  if (bestR === -1) {
+  const best = findBestCell(grid, rowMask, colMask, boxMask);
+  if (!best) return counter.val;
+  if (best.r === -1) {
     counter.val++;
     return counter.val;
   }
 
-  const b = Math.floor(bestR / 3) * 3 + Math.floor(bestC / 3);
-  let cMask = bestMask;
+  const b = Math.floor(best.r / 3) * 3 + Math.floor(best.c / 3);
+  let cMask = best.mask;
   while (cMask > 0) {
     const bit = cMask & (-cMask);
     cMask ^= bit;
     const num = Math.round(Math.log2(bit)) + 1;
 
-    grid[bestR][bestC] = num;
-    rowMask[bestR] |= bit;
-    colMask[bestC] |= bit;
+    grid[best.r][best.c] = num;
+    rowMask[best.r] |= bit;
+    colMask[best.c] |= bit;
     boxMask[b] |= bit;
 
     countSolutionsMRV(grid, rowMask, colMask, boxMask, counter);
 
-    grid[bestR][bestC] = 0;
-    rowMask[bestR] &= ~bit;
-    colMask[bestC] &= ~bit;
+    grid[best.r][best.c] = 0;
+    rowMask[best.r] &= ~bit;
+    colMask[best.c] &= ~bit;
     boxMask[b] &= ~bit;
 
     if (counter.val >= 2) return 2;
@@ -310,6 +293,29 @@ class SudokuEngine {
     return this.symbols[val - 1];
   }
 
+  resetCell(cell, val) {
+    cell.val = val;
+    cell.isClue = val !== 0;
+    cell.isError = false;
+    cell.notes = 0;
+  }
+
+  getPeerIndexes(r, c) {
+    const indexes = new Set();
+    const startRow = Math.floor(r / this.boxSize) * this.boxSize;
+    const startCol = Math.floor(c / this.boxSize) * this.boxSize;
+
+    for (let i = 0; i < this.size; i++) {
+      indexes.add(this.getIndex(r, i));
+      indexes.add(this.getIndex(i, c));
+      indexes.add(this.getIndex(
+        startRow + Math.floor(i / this.boxSize),
+        startCol + i % this.boxSize
+      ));
+    }
+    return indexes;
+  }
+
   generatePuzzleInWorker(size, minClues, maxClues) {
     this.terminateWorker();
     const blob = new Blob([WORKER_SCRIPT], { type: 'application/javascript' });
@@ -349,21 +355,13 @@ class SudokuEngine {
     this.initialPuzzle = initialPuzzle;
 
     for (let i = 0; i < this.totalCells; i++) {
-      const v = initialPuzzle[i];
-      this.cells[i].val = v;
-      this.cells[i].isClue = v !== 0;
-      this.cells[i].isError = false;
-      this.cells[i].notes = 0;
+      this.resetCell(this.cells[i], initialPuzzle[i]);
     }
   }
 
   restartPuzzle() {
     for (let i = 0; i < this.totalCells; i++) {
-      const initVal = this.initialPuzzle[i];
-      this.cells[i].val = initVal;
-      this.cells[i].isClue = initVal !== 0;
-      this.cells[i].isError = false;
-      this.cells[i].notes = 0;
+      this.resetCell(this.cells[i], this.initialPuzzle[i]);
     }
   }
 
@@ -398,29 +396,9 @@ class SudokuEngine {
     if (this.cells[targetIdx].val !== 0) return 0;
 
     let usedMask = 0;
-    const startRow = Math.floor(r / this.boxSize) * this.boxSize;
-    const startCol = Math.floor(c / this.boxSize) * this.boxSize;
-
-    for (let i = 0; i < this.size; i++) {
-      // 1. Quét hàng: Bỏ qua ô điền sai
-      const rowCell = this.cells[this.getIndex(r, i)];
-      if (rowCell.val > 0 && !rowCell.isError) {
-        usedMask |= (1 << (rowCell.val - 1));
-      }
-
-      // 2. Quét cột: Bỏ qua ô điền sai
-      const colCell = this.cells[this.getIndex(i, c)];
-      if (colCell.val > 0 && !colCell.isError) {
-        usedMask |= (1 << (colCell.val - 1));
-      }
-
-      // 3. Quét khối Box: Bỏ qua ô điền sai
-      const boxR = startRow + Math.floor(i / this.boxSize);
-      const boxC = startCol + (i % this.boxSize);
-      const boxCell = this.cells[this.getIndex(boxR, boxC)];
-      if (boxCell.val > 0 && !boxCell.isError) {
-        usedMask |= (1 << (boxCell.val - 1));
-      }
+    for (const index of this.getPeerIndexes(r, c)) {
+      const cell = this.cells[index];
+      if (cell.val > 0 && !cell.isError) usedMask |= 1 << (cell.val - 1);
     }
 
     const allMask = (1 << this.size) - 1;
@@ -429,13 +407,21 @@ class SudokuEngine {
 
   /**
    * Điền nháp nhanh:
+    * - Xóa nội dung các ô điền sai
    * - Chỉ điền nháp vào ô trống
-   * - Không điền nháp vào ô điền sai (cell.notes = 0 vì cell.val > 0)
+    * - Xóa nháp ở các ô đang có giá trị
    */
   computeFastPencilMarks() {
     let updated = false;
     for (let i = 0; i < this.totalCells; i++) {
       const cell = this.cells[i];
+      if (cell.isError) {
+        cell.val = 0;
+        cell.isError = false;
+        cell.notes = 0;
+        updated = true;
+      }
+
       if (cell.val === 0) {
         cell.notes = this.getValidCandidatesMask(cell.r, cell.c);
         updated = true;
@@ -448,17 +434,9 @@ class SudokuEngine {
 
   eliminatePeerNotes(r, c, val) {
     const maskToEliminate = ~(1 << (val - 1));
-    const startRow = Math.floor(r / this.boxSize) * this.boxSize;
-    const startCol = Math.floor(c / this.boxSize) * this.boxSize;
-
-    for (let i = 0; i < this.size; i++) {
-      this.cells[this.getIndex(r, i)].notes &= maskToEliminate;
-      this.cells[this.getIndex(i, c)].notes &= maskToEliminate;
-
-      const boxR = startRow + Math.floor(i / this.boxSize);
-      const boxC = startCol + (i % this.boxSize);
-      this.cells[this.getIndex(boxR, boxC)].notes &= maskToEliminate;
-    }
+    this.getPeerIndexes(r, c).forEach(index => {
+      this.cells[index].notes &= maskToEliminate;
+    });
   }
 
   serialize() {
@@ -505,17 +483,9 @@ class SudokuEngine {
 
   hasConflict(r, c, val) {
     if (!val || val <= 0) return false;
-    const startRow = Math.floor(r / this.boxSize) * this.boxSize;
-    const startCol = Math.floor(c / this.boxSize) * this.boxSize;
-
-    for (let i = 0; i < this.size; i++) {
-      if (i !== c && this.cells[this.getIndex(r, i)].val === val) return true;
-      if (i !== r && this.cells[this.getIndex(i, c)].val === val) return true;
-      const bR = startRow + Math.floor(i / this.boxSize);
-      const bC = startCol + (i % this.boxSize);
-      if ((bR !== r || bC !== c) && this.cells[this.getIndex(bR, bC)].val === val) return true;
-    }
-
-    return false;
+    const targetIndex = this.getIndex(r, c);
+    return [...this.getPeerIndexes(r, c)].some(index => (
+      index !== targetIndex && this.cells[index].val === val
+    ));
   }
 }

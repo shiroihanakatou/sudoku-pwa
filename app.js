@@ -5,6 +5,14 @@
 
 const STORAGE_KEY = 'sudoku_pwa_saved_game_state_v1';
 
+const triggerHaptic = (pattern) => {
+  if (typeof navigator.vibrate === 'function') {
+    navigator.vibrate(pattern);
+  }
+};
+
+const formatTime = (seconds) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+
 const DIFFICULTY_CONFIG = {
   easy: { size: 9, min: 36, max: 45, label: 'Easy' },
   medium: { size: 9, min: 32, max: 35, label: 'Medium' },
@@ -35,8 +43,20 @@ class SudokuView {
     this.domVictoryScreen = document.getElementById('victory-screen');
     this.domSharePreview = document.getElementById('puzzle-share-preview');
     this.domToastCopy = document.getElementById('toast-copy');
+    this.domDifficultyGrid = document.querySelector('.difficulty-grid');
 
     this.cellElements = [];
+    this.buildDifficultyOptions();
+  }
+
+  buildDifficultyOptions() {
+    Object.entries(DIFFICULTY_CONFIG).forEach(([key, config]) => {
+      const button = document.createElement('button');
+      button.className = `btn-diff${key === 'sixteen' ? ' diff-special' : ''}`;
+      button.dataset.diff = key;
+      button.innerHTML = `<span class="diff-name">${config.label}</span>`;
+      this.domDifficultyGrid.appendChild(button);
+    });
   }
 
   showScreen(screenId) {
@@ -82,6 +102,8 @@ class SudokuView {
   buildBlankBoardDOM(size, symbols) {
     this.domBoard.innerHTML = '';
     this.domBoard.setAttribute('data-size', size);
+    this.domBoard.parentElement.classList.toggle('board-container-16', size === 16);
+    this.domBoard.closest('.board-wrapper').classList.toggle('board-wrapper-16', size === 16);
     this.cellElements = [];
 
     const fragment = document.createDocumentFragment();
@@ -167,10 +189,12 @@ class SudokuView {
     const el = this.cellElements[index];
     if (!el) return;
 
+    const isSelected = el.classList.contains('selected-cell');
     const valSpan = el.querySelector('.cell-value');
     const pencilGrid = el.querySelector('.pencil-grid');
 
     el.className = 'cell';
+    el.classList.toggle('selected-cell', isSelected);
     if (cellData.isClue) {
       el.classList.add('clue');
     } else if (cellData.val > 0) {
@@ -321,6 +345,7 @@ class SudokuController {
       if (!keyBtn || keyBtn.disabled) return;
 
       const clickedVal = parseInt(keyBtn.dataset.val, 10);
+      triggerHaptic([30]);
       if (this.activeNumber === clickedVal) {
         this.activeNumber = null;
         this.view.clearHighlight();
@@ -348,7 +373,7 @@ class SudokuController {
     this.view.domFastPencil.addEventListener('click', () => {
       if (this.isGenerating) return;
       if (this.engine.computeFastPencilMarks()) {
-        this.view.renderAll(this.engine);
+        this.renderBoard();
         this.refreshHighlights();
         this.saveState();
       }
@@ -383,9 +408,7 @@ class SudokuController {
 
     this.loadingTimerInterval = setInterval(() => {
       const totalSeconds = Math.floor((performance.now() - this.loadingStartTime) / 1000);
-      const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-      const secs = (totalSeconds % 60).toString().padStart(2, '0');
-      this.view.setLoadingElapsedTime(`${mins}:${secs}`);
+      this.view.setLoadingElapsedTime(formatTime(totalSeconds));
     }, 250);
   }
 
@@ -427,8 +450,7 @@ class SudokuController {
       this.stopLoadingTimer();
 
       this.view.setLoadingState(false);
-      this.view.renderAll(this.engine);
-      this.view.updateKeypadCounts(this.engine);
+      this.renderBoard();
 
       this.startTimer();
       this.saveState();
@@ -444,8 +466,7 @@ class SudokuController {
     this.activeNumber = null;
     this.isGameFinished = false;
 
-    this.view.renderAll(this.engine);
-    this.view.updateKeypadCounts(this.engine);
+    this.renderBoard();
     this.view.clearHighlight();
     this.startTimer();
     this.updateHeaderMeta();
@@ -454,9 +475,16 @@ class SudokuController {
 
   handleCellClick(index) {
     if (this.isGameFinished) return;
-    const cell = this.engine.cells[index];
-    if (cell.isClue) return;
     if (!this.activeNumber) return;
+
+    const cell = this.engine.cells[index];
+    this.view.cellElements.forEach(cellElement => cellElement.classList.remove('selected-cell'));
+    this.view.cellElements[index]?.classList.add('selected-cell');
+    if (this.engine.size === 16) {
+      this.view.cellElements[index]?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }
+    if (cell.isClue) return;
+    if (cell.val > 0 && !cell.isError) return;
 
     if (!this.pencilMode) {
       /* ================= ĐIỀN SỐ CHÍNH THỨC ================= */
@@ -474,12 +502,12 @@ class SudokuController {
         } else {
           cell.isError = true;
           this.mistakes++;
+          triggerHaptic([50, 50, 50]);
           this.updateHeaderMeta();
         }
       }
 
-      this.view.renderAll(this.engine);
-      this.view.updateKeypadCounts(this.engine);
+      this.renderBoard();
 
       if (this.activeNumber && this.engine.getRemainingCount(this.activeNumber) === 0) {
         this.activeNumber = null;
@@ -497,23 +525,15 @@ class SudokuController {
         const bit = 1 << (this.activeNumber - 1);
         const isNotePresent = (cell.notes & bit) !== 0;
 
-        if (isNotePresent) {
-          // Bấm lại để gỡ/tắt ô nháp đã tồn tại
-          cell.notes ^= bit;
-          this.view.renderCell(index, cell, this.engine);
-          this.saveState();
-        } else {
-          // Kiểm tra xung đột cơ bản trước khi thêm mới nháp
-          if (this.engine.hasConflict(cell.r, cell.c, this.activeNumber)) {
-            // Có xung đột cơ bản: làm rung ô và không điền vào
-            this.view.shakeCell(index);
-            return;
-          }
-          // Không có xung đột cơ bản: điền nháp bình thường
-          cell.notes |= bit;
-          this.view.renderCell(index, cell, this.engine);
-          this.saveState();
+        if (!isNotePresent && this.engine.hasConflict(cell.r, cell.c, this.activeNumber)) {
+          this.view.shakeCell(index);
+          triggerHaptic([50, 50, 50]);
+          return;
         }
+
+        cell.notes ^= bit;
+        this.view.renderCell(index, cell, this.engine);
+        this.saveState();
       }
     }
 
@@ -525,11 +545,8 @@ class SudokuController {
     this.stopTimer();
     this.clearSavedGame();
 
-    const mins = Math.floor(this.timerSeconds / 60).toString().padStart(2, '0');
-    const secs = (this.timerSeconds % 60).toString().padStart(2, '0');
-
     this.view.toggleVictoryScreen(true, {
-      time: `${mins}:${secs}`,
+      time: formatTime(this.timerSeconds),
       mistakes: this.mistakes,
       difficulty: DIFFICULTY_CONFIG[this.currentDifficultyKey].label,
       shareText: this.engine.getShareablePuzzleText()
@@ -543,6 +560,11 @@ class SudokuController {
       console.warn('Error occurred while removing from LocalStorage:', e);
     }
     this.view.setContinueVisible(false);
+  }
+
+  renderBoard() {
+    this.view.renderAll(this.engine);
+    this.view.updateKeypadCounts(this.engine);
   }
 
   refreshHighlights() {
@@ -562,15 +584,16 @@ class SudokuController {
   }
 
   stopTimer() {
-    if (this.timerInterval) clearInterval(this.timerInterval);
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
   }
 
   updateHeaderMeta() {
-    const mins = Math.floor(this.timerSeconds / 60).toString().padStart(2, '0');
-    const secs = (this.timerSeconds % 60).toString().padStart(2, '0');
     this.view.updateHeaderInfo(
       DIFFICULTY_CONFIG[this.currentDifficultyKey].label,
-      `${mins}:${secs}`,
+      formatTime(this.timerSeconds),
       this.mistakes
     );
   }
@@ -616,8 +639,7 @@ class SudokuController {
       this.engine.deserialize(state.engine);
       this.view.buildBlankBoardDOM(this.engine.size, this.engine.symbols);
       this.view.setLoadingState(false);
-      this.view.renderAll(this.engine);
-      this.view.updateKeypadCounts(this.engine);
+      this.renderBoard();
       this.view.updatePencilModeUI(false);
       this.view.clearHighlight();
 

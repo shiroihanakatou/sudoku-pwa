@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="Play Sudoku offline with this modern PWA.">
   <meta name="theme-color" content="#f4f6fb">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -89,26 +89,7 @@
           <h2>Choose Difficulty</h2>
           <button id="btn-close-modal" class="btn-close">&times;</button>
         </div>
-        <div class="difficulty-grid">
-          <button class="btn-diff" data-diff="easy">
-            <span class="diff-name">Easy</span>
-          </button>
-          <button class="btn-diff" data-diff="medium">
-            <span class="diff-name">Medium</span>
-          </button>
-          <button class="btn-diff" data-diff="hard">
-            <span class="diff-name">Hard</span>
-          </button>
-          <button class="btn-diff" data-diff="expert">
-            <span class="diff-name">Expert</span>
-          </button>
-          <button class="btn-diff" data-diff="extreme">
-            <span class="diff-name">Extreme</span>
-          </button>
-          <button class="btn-diff diff-special" data-diff="sixteen">
-            <span class="diff-name">16×16</span>
-          </button>
-        </div>
+        <div class="difficulty-grid"></div>
       </div>
     </div>
 
@@ -161,14 +142,5 @@
 
   <script src="sudoku-engine.js"></script>
   <script src="app.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(() => console.log('Service Worker đã sẵn sàng cho chế độ Offline!'))
-          .catch((err) => console.error('Lỗi Service Worker:', err));
-      });
-    }
-  </script>
 </body>
 </html>

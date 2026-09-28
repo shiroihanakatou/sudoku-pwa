@@ -3,7 +3,7 @@
  * Lưu trữ App Shell và Assets cho phép chơi ngoại tuyến hoàn toàn
  */
 
-const CACHE_NAME = 'sudoku-pwa-v1';
+const CACHE_NAME = 'sudoku-pwa-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -14,22 +14,16 @@ const ASSETS_TO_CACHE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(ASSETS_TO_CACHE))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
+      return Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)));
     }).then(() => self.clients.claim())
   );
 });
@@ -38,17 +32,10 @@ self.addEventListener('fetch', (event) => {
   // Chiến lược Cache First, Network Fallback
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
-        }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
+      if (cachedResponse) return cachedResponse;
+      return fetch(event.request).then(networkResponse => {
+        if (networkResponse?.status !== 200 || networkResponse.type !== 'basic') return networkResponse;
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse.clone()));
         return networkResponse;
       });
     })
