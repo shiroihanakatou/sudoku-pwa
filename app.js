@@ -947,6 +947,11 @@ class SudokuController {
           if (document.visibilityState === 'visible') {
             registration.update().catch(() => {});
             queryAppVersion();
+
+            // BỔ SUNG: Hiện lại Toast nếu vẫn còn bản cập nhật đang nằm chờ
+            if (registration.waiting && navigator.serviceWorker.controller) {
+              promptUserForUpdate(registration.waiting);
+            }
           }
         });
       }).catch((err) => {
