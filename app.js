@@ -871,22 +871,44 @@ class SudokuController {
   registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
 
+    // 1. Hàm đọc trực tiếp từ CacheStorage và hiển thị NGUYÊN VẸN toàn bộ CACHE_NAME
+    const syncVersionFromCache = async () => {
+      if (!('caches' in window)) return;
+      try {
+        const keys = await caches.keys();
+        // Lấy danh sách các cache thuộc về app và chọn cache mới nhất
+        const matchingKeys = keys.filter(k => k.startsWith('sudoku-pwa-'));
+        const targetCacheKey = matchingKeys.length > 0 ? matchingKeys[matchingKeys.length - 1] : keys[0];
+
+        if (targetCacheKey) {
+          const versionEl = document.getElementById('app-version');
+          if (versionEl) {
+            // Gán trực tiếp toàn bộ chuỗi CACHE_NAME (không replace bất kỳ ký tự nào)
+            versionEl.textContent = targetCacheKey.replace(/^sudoku-pwa-/, '');
+          }
+        }
+      } catch (e) {
+        console.warn('Không thể đọc CacheStorage:', e);
+      }
+    };
+
+    // Đọc và hiển thị ngay lập tức khi khởi tạo
+    syncVersionFromCache();
+
     window.addEventListener('load', () => {
-      // 1. Lắng nghe tin nhắn phản hồi từ Service Worker
+      // 2. Kênh nhận tin nhắn từ Service Worker: Cũng hiển thị NGUYÊN VẸN
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'VERSION_INFO') {
           const versionEl = document.getElementById('app-version');
-          if (versionEl) {
-            // Lọc chuỗi CACHE_NAME (ví dụ: 'sudoku-pwa-v1.0.0.dc62534' -> 'v1.0.0.dc62534')
-            const rawVersion = event.data.version;
-            const cleanVersion = rawVersion.replace(/^sudoku-pwa-/, '');
-            versionEl.textContent = cleanVersion;
+          if (versionEl && event.data.version) {
+            // Gán toàn bộ phiên bản nhận được từ sw.js
+            versionEl.textContent = event.data.version;
           }
         }
       });
 
-      // 2. Hàm gửi yêu cầu lấy phiên bản
       const queryAppVersion = () => {
+        syncVersionFromCache();
         if (navigator.serviceWorker.controller) {
           navigator.serviceWorker.controller.postMessage({ action: 'GET_VERSION' });
         } else {
@@ -940,7 +962,6 @@ class SudokuController {
           });
         });
 
-        // Lấy số hiệu phiên bản ngay khi Service Worker đã sẵn sàng
         queryAppVersion();
 
         document.addEventListener('visibilitychange', () => {
@@ -948,7 +969,6 @@ class SudokuController {
             registration.update().catch(() => {});
             queryAppVersion();
 
-            // BỔ SUNG: Hiện lại Toast nếu vẫn còn bản cập nhật đang nằm chờ
             if (registration.waiting && navigator.serviceWorker.controller) {
               promptUserForUpdate(registration.waiting);
             }

@@ -3,7 +3,7 @@
  * Lưu trữ App Shell và Assets cho phép chơi ngoại tuyến hoàn toàn
  */
 
-const CACHE_NAME = 'sudoku-pwa-v1.0.1.357aea3';
+const CACHE_NAME = 'sudoku-pwa-v1.0.1.de4d6ef';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -35,13 +35,15 @@ self.addEventListener('message', (event) => {
   if (event.data.action === 'SKIP_WAITING') {
     self.skipWaiting();
   } else if (event.data.action === 'GET_VERSION') {
-    // Phản hồi CACHE_NAME về cho cửa sổ/tab đã yêu cầu
-    if (event.source) {
-      event.source.postMessage({
-        type: 'VERSION_INFO',
-        version: CACHE_NAME
+    // Tìm tất cả cửa sổ đang mở (kể cả khi chưa kịp claim quyền) để gửi phiên bản về
+    self.clients.matchAll({ includeUncontrolled: true, type: 'window' }).then((clients) => {
+      clients.forEach((client) => {
+        client.postMessage({
+          type: 'VERSION_INFO',
+          version: CACHE_NAME
+        });
       });
-    }
+    });
   }
 });
 

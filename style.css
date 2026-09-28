@@ -921,16 +921,18 @@ body {
 /* ================= 10. APP VERSION BADGE ================= */
 .app-version {
   position: absolute;
-  bottom: calc(env(safe-area-inset-bottom) + 6px);
+  bottom: calc(env(safe-area-inset-bottom) + 8px);
   left: 50%;
   transform: translateX(-50%);
   font-family: -apple-system, BlinkMacSystemFont, "SF Mono", monospace;
   font-size: 0.72rem;
   color: var(--text-muted);
-  opacity: 0.6;
+  opacity: 0.7;
   letter-spacing: 0.05rem;
+  white-space: nowrap; /* BẮT BUỘC: Giữ toàn bộ chuỗi trên 1 dòng, không bị ngắt cụt */
   pointer-events: none;
   user-select: none;
+  z-index: 10;          /* Đảm bảo không bị lề hay khung khác che lấp */
 }
 
 /* ================= 11. UPDATE TOAST NOTIFICATION ================= */
