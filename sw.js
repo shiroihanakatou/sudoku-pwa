@@ -3,7 +3,7 @@
  * Lưu trữ App Shell và Assets cho phép chơi ngoại tuyến hoàn toàn
  */
 
-const CACHE_NAME = 'sudoku-pwa-v1.0.1.51e8717';
+const CACHE_NAME = 'sudoku-pwa-v1.0.1.675fadd';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
