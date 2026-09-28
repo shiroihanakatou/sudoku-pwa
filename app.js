@@ -316,8 +316,7 @@ class SudokuController {
       panY: 0,
       lastDistance: 0,
       lastCenter: null,
-      moved: false,
-      suppressClick: false
+      moved: false
     };
 
     this.initEventListeners();
@@ -336,7 +335,7 @@ class SudokuController {
       this.view.toggleDiffModal(false);
     });
 
-    document.getElementById('btn-back-menu').addEventListener('click', () => {
+    this.view.domBtnBackMenu.addEventListener('click', () => {
       if (this.isGenerating) {
         this.engine.terminateWorker();
         this.isGenerating = false;
@@ -352,7 +351,7 @@ class SudokuController {
       this.loadState();
     });
 
-    document.getElementById('btn-restart').addEventListener('click', () => {
+    this.view.domBtnRestart.addEventListener('click', () => {
       if (this.isGenerating) return;
       if (confirm('Are you sure you want to restart this game? All notes, time, and mistakes will be reset.')) {
         this.restartCurrentGame();
@@ -489,12 +488,6 @@ class SudokuController {
       if (!this.boardNavigation.pointers.has(event.pointerId)) return;
 
       this.boardNavigation.pointers.delete(event.pointerId);
-      if (this.boardNavigation.moved) {
-        this.boardNavigation.suppressClick = true;
-        setTimeout(() => {
-          this.boardNavigation.suppressClick = false;
-        }, 100);
-      }
 
       if (this.boardNavigation.pointers.size < 2) {
         this.boardNavigation.lastDistance = 0;
@@ -609,7 +602,6 @@ class SudokuController {
     this.boardNavigation.lastDistance = 0;
     this.boardNavigation.lastCenter = null;
     this.boardNavigation.moved = false;
-    this.boardNavigation.suppressClick = false;
     this.applyBoardNavigation();
   }
 

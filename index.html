@@ -39,7 +39,7 @@
           <span id="display-timer" class="timer">00:00</span>
         </div>
 
-        <button id="btn-restart" class="btn-icon btn-restart" aria-label="Restart Game" title="Restart Game">
+        <button id="btn-restart" class="btn-icon" aria-label="Restart Game" title="Restart Game">
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
         </button>
       </header>
@@ -70,12 +70,12 @@
       <footer class="game-controls">
         <div class="action-toolbar">
           <button id="btn-toggle-pencil" class="btn-action">
-            <span class="icon">✏️</span>
-            <span class="label">Pencil: <strong id="lbl-pencil-state">OFF</strong></span>
+            <span>✏️</span>
+            <span>Pencil: <strong id="lbl-pencil-state">OFF</strong></span>
           </button>
           <button id="btn-fast-pencil" class="btn-action">
-            <span class="icon">⚡</span>
-            <span class="label">Fast Pencil</span>
+            <span>⚡</span>
+            <span>Fast Pencil</span>
           </button>
         </div>
 
@@ -99,7 +99,7 @@
     <section id="victory-screen" class="victory-screen-layer hidden">
       <div class="victory-container">
         <div class="victory-card">
-          <div class="victory-header">
+          <div>
             <span class="trophy-icon">🏆</span>
             <h2>CONGRATULATIONS!</h2>
             <p class="victory-sub">You have successfully solved the Sudoku puzzle.</p>
@@ -124,17 +124,17 @@
             <h3>Share your puzzle</h3>
             <div id="puzzle-share-preview" class="share-preview-box"></div>
             <button id="btn-copy-puzzle" class="btn btn-secondary btn-copy">
-              <span class="copy-icon">📋</span> Copy Puzzle
+              <span>📋</span> Copy Puzzle
             </button>
             <span id="toast-copy" class="toast-feedback hidden">Copied to clipboard!</span>
           </div>
 
           <div class="victory-actions">
             <button id="btn-victory-home" class="btn btn-secondary">
-              <span class="icon">🏠</span> Menu
+              <span>🏠</span> Menu
             </button>
             <button id="btn-victory-new-game" class="btn btn-primary">
-              <span class="icon">✨</span> New Game
+              <span>✨</span> New Game
             </button>
           </div>
         </div>

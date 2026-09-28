@@ -27,8 +27,12 @@
   --user-text: #2d55af;        /* Ô điền ĐÚNG: Màu xanh dương đậm */
   --error-text: #b91c1c;       /* Ô điền SAI: tương phản WCAG AA trên nền đỏ nhạt */
   --error-bg: #fef2f2;
-  
+
   --board-max-size: min(92vw, 480px);
+  --board-16-size: max(min(96vw, 500px), 384px);
+  --board-render-scale: 1;
+  --board-gap: 2px;
+  --box-gap: 1px;
 }
 
 * {
@@ -250,6 +254,7 @@ body {
   border: 3px solid var(--board-border);
   border-radius: 6px;
   box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+  gap: var(--board-gap);
 }
 
 .board-box {
@@ -257,7 +262,7 @@ body {
   min-width: 0;
   min-height: 0;
   background: var(--cell-border);
-  gap: 1px;
+  gap: var(--box-gap);
 }
 
 .cell {
@@ -278,7 +283,6 @@ body {
 .board[data-size="9"] {
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  gap: 2px;
 }
 
 .board[data-size="9"] .board-box {
@@ -287,12 +291,12 @@ body {
 }
 
 .board[data-size="16"] {
-  width: max(min(96vw, 500px), 384px);
-  height: max(min(96vw, 500px), 384px);
+  width: var(--board-16-size);
+  height: var(--board-16-size);
   flex: 0 0 auto;
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(4, 1fr);
-  gap: 2px;
+  --board-render-scale: 0.61;
 }
 
 .board[data-size="16"] .board-box {
@@ -300,7 +304,7 @@ body {
   grid-template-rows: repeat(4, 1fr);
 }
 
-.board[data-size="16"] .cell { font-size: 0.95rem; }
+.cell { font-size: calc(1.55rem * var(--board-render-scale)); }
 
 /* 1. Ô đề bài gốc */
 .cell.clue,
@@ -383,21 +387,19 @@ body {
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
-  font-size: 0.72rem;
+  font-size: calc(0.72rem * var(--board-render-scale) * 0.6);
   color: var(--text-muted);
   visibility: hidden;
   line-height: 1;
 }
 
 .board[data-size="16"] .pencil-slot {
-  font-size: clamp(0.35rem, 1.5vw, 0.5rem);
   line-height: 0.85;
   padding: 0;
   margin: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  transform: scale(0.68);
   transform-origin: center center;
 }
 
@@ -414,7 +416,6 @@ body {
 
 .board[data-size="16"] .pencil-slot.highlighted {
   border-radius: 1px;
-  transform: scale(0.74);
 }
 
 /* ================= 5. CONTROLS ================= */
@@ -609,8 +610,9 @@ body {
 
 .btn-diff {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  text-align: center;
   background: var(--surface-soft);
   border: 1px solid var(--surface-border);
   border-radius: 12px;
@@ -640,8 +642,8 @@ body {
 }
 
 .board-container.board-container-16 {
-  width: max(min(96vw, 500px), 384px);
-  height: max(min(96vw, 500px), 384px);
+  width: var(--board-16-size);
+  height: var(--board-16-size);
   flex: 0 0 auto;
 }
 
