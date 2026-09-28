@@ -869,13 +869,98 @@ class SudokuController {
   }
 
   registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('SW Registered:', reg.scope))
-          .catch(err => console.error('SW Failed:', err));
+    if (!('serviceWorker' in navigator)) return;
+
+    window.addEventListener('load', () => {
+      // 1. Lắng nghe tin nhắn phản hồi từ Service Worker
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'VERSION_INFO') {
+          const versionEl = document.getElementById('app-version');
+          if (versionEl) {
+            // Lọc chuỗi CACHE_NAME (ví dụ: 'sudoku-pwa-v1.0.0.dc62534' -> 'v1.0.0.dc62534')
+            const rawVersion = event.data.version;
+            const cleanVersion = rawVersion.replace(/^sudoku-pwa-/, '');
+            versionEl.textContent = cleanVersion;
+          }
+        }
       });
-    }
+
+      // 2. Hàm gửi yêu cầu lấy phiên bản
+      const queryAppVersion = () => {
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ action: 'GET_VERSION' });
+        } else {
+          navigator.serviceWorker.ready.then((reg) => {
+            if (reg.active) {
+              reg.active.postMessage({ action: 'GET_VERSION' });
+            }
+          });
+        }
+      };
+
+      navigator.serviceWorker.register('./sw.js').then((registration) => {
+        let waitingWorker = null;
+
+        const toast = document.getElementById('update-toast');
+        const btnApply = document.getElementById('btn-update-now');
+        const btnDismiss = document.getElementById('btn-update-dismiss');
+
+        const promptUserForUpdate = (worker) => {
+          waitingWorker = worker;
+          if (toast) toast.classList.remove('hidden');
+        };
+
+        if (btnDismiss) {
+          btnDismiss.addEventListener('click', () => {
+            if (toast) toast.classList.add('hidden');
+          });
+        }
+
+        if (btnApply) {
+          btnApply.addEventListener('click', () => {
+            if (waitingWorker) {
+              waitingWorker.postMessage({ action: 'SKIP_WAITING' });
+            }
+            if (toast) toast.classList.add('hidden');
+          });
+        }
+
+        if (registration.waiting && navigator.serviceWorker.controller) {
+          promptUserForUpdate(registration.waiting);
+        }
+
+        registration.addEventListener('updatefound', () => {
+          const installingWorker = registration.installing;
+          if (!installingWorker) return;
+
+          installingWorker.addEventListener('statechange', () => {
+            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              promptUserForUpdate(installingWorker);
+            }
+          });
+        });
+
+        // Lấy số hiệu phiên bản ngay khi Service Worker đã sẵn sàng
+        queryAppVersion();
+
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            registration.update().catch(() => {});
+            queryAppVersion();
+          }
+        });
+      }).catch((err) => {
+        console.warn('Lỗi đăng ký Service Worker:', err);
+      });
+
+      let isRefreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!isRefreshing) {
+          isRefreshing = true;
+          window.location.reload();
+        }
+      });
+    });
   }
 }
 

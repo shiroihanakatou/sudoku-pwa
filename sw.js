@@ -3,7 +3,7 @@
  * Lưu trữ App Shell và Assets cho phép chơi ngoại tuyến hoàn toàn
  */
 
-const CACHE_NAME = 'sudoku-pwa-v1.0.0.dc62534';
+const CACHE_NAME = 'sudoku-pwa-v1.0.1.69060e6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -16,7 +16,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(ASSETS_TO_CACHE))
-      .then(() => self.skipWaiting())
+      // ĐÃ BỎ self.skipWaiting() Ở ĐÂY để Service Worker mới đứng ở trạng thái "waiting"
   );
 });
 
@@ -28,8 +28,24 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// LẮNG NGHE LỆNH TỪ GIAO DIỆN CLIENT
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+
+  if (event.data.action === 'SKIP_WAITING') {
+    self.skipWaiting();
+  } else if (event.data.action === 'GET_VERSION') {
+    // Phản hồi CACHE_NAME về cho cửa sổ/tab đã yêu cầu
+    if (event.source) {
+      event.source.postMessage({
+        type: 'VERSION_INFO',
+        version: CACHE_NAME
+      });
+    }
+  }
+});
+
 self.addEventListener('fetch', (event) => {
-  // Chiến lược Cache First, Network Fallback
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;

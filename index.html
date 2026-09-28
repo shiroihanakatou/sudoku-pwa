@@ -24,6 +24,8 @@
           <button id="btn-open-new-game" class="btn btn-primary">New Game</button>
         </div>
       </div>
+      <!-- Số hiệu phiên bản -->
+      <div id="app-version" class="app-version"></div>
     </section>
 
     <!-- 2. Màn hình chơi game (In-Game Screen) -->
@@ -140,6 +142,21 @@
         </div>
       </div>
     </section>
+
+    <!-- Banner/Toast thông báo cập nhật phiên bản mới -->
+    <div id="update-toast" class="update-toast hidden" role="alert">
+      <div class="update-toast-content">
+        <span class="update-toast-icon">✨</span>
+        <div class="update-toast-info">
+          <p class="update-toast-title">New version available!</p>
+          <p class="update-toast-sub">Update now to get the latest features.</p>
+        </div>
+      </div>
+      <div class="update-toast-actions">
+        <button id="btn-update-dismiss" class="btn-toast-dismiss" title="Skip">&times;</button>
+        <button id="btn-update-now" class="btn-toast-apply">Update</button>
+      </div>
+    </div>
   </div>
 
   <script src="sudoku-engine.js"></script>
