@@ -688,9 +688,6 @@ class SudokuController {
     this.view.cellElements.forEach(cellElement => cellElement.classList.remove('selected-cell'));
     this.view.cellElements[index]?.classList.add('selected-cell');
 
-    if (this.engine.size === 16) {
-      this.view.cellElements[index]?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-    }
     if (cell.isClue) return;
     if (cell.val > 0 && !cell.isError) return;
 
